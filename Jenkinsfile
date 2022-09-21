@@ -1,8 +1,7 @@
 pipeline {
   agent any
 environment {
-    // SEMGREP_RULES = "p/security-audit p/secrets" // more at semgrep.dev/explore
-    // SEMGREP_BASELINE_REF = "master"
+    SEMGREP_BASELINE_REF = "origin/${env.CHANGE_TARGET}"
 
     // == Optional settings in the `environment {}` block
 
@@ -16,10 +15,6 @@ environment {
       SEMGREP_COMMIT = "${GIT_COMMIT}"
       SEMGREP_PR_ID = "${env.CHANGE_ID}"
 
-    // Never fail the build due to findings.
-    // Instead, just collect findings for semgrep.dev/manage/findings
-    //   SEMGREP_AUDIT_ON = "unknown"
-
     // Change job timeout (default is 1800 seconds; set to 0 to disable)
     //   SEMGREP_TIMEOUT = "300"
   }
@@ -32,8 +27,19 @@ environment {
             sh 'echo $SEMGREP_BRANCH'
             sh 'echo $SEMGREP_COMMIT'
             sh 'ls -la'
-            sh 'pip3 install semgrep'
-            sh 'semgrep ci'
+            sh 'whoami'
+            sh 'newgrp docker'
+            sh '''docker pull returntocorp/semgrep && \
+    docker run \
+    -e SEMGREP_APP_TOKEN=$SEMGREP_APP_TOKEN \
+    -e SEMGREP_REPO_URL=$SEMGREP_REPO_URL \
+    -e SEMGREP_BRANCH=$SEMGREP_BRANCH \
+    -e SEMGREP_REPO_NAME=$SEMGREP_REPO_NAME \
+    -e SEMGREP_BRANCH=$SEMGREP_BRANCH \
+    -e SEMGREP_COMMIT=$SEMGREP_COMMIT \
+    -e SEMGREP_PR_ID=$SEMGREP_PR_ID \
+    -v "$(pwd):$(pwd)" --workdir $(pwd) \
+    returntocorp/semgrep semgrep ci '''
         }
     }
   }
